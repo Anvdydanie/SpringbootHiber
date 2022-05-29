@@ -1,0 +1,78 @@
+version: "3.9"
+
+volumes:
+  shared-data:
+    driver: local
+
+services:
+  database:
+    image: postgres:13.3
+    container_name: springboot-db
+    environment:
+      POSTGRES_DB: "postgres"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "123321"
+      #PGDATA: "/var/lib/postgresql/data/pgdata"
+    ports:
+      - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+    networks:
+      - postgres
+
+  app:
+    container_name: springboot-app
+    build:
+      context: .
+      dockerfile: Dockerfile-app-dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://springboot-db:5432/postgres
+    ports:
+      - "8080:8080"
+    volumes:
+      - shared-data:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    networks:
+      - postgres
+
+  loki:
+    image: grafana/loki:2.2.1
+    container_name: loki-service
+    volumes:
+      - ./loki:/etc/loki/
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki.yml
+    networks:
+      - lokinet
+
+  promtail:
+    image: grafana/promtail:2.2.1
+    container_name: promtail-service
+    volumes:
+      - shared-data:/var/log
+      - ./promtail:/etc/promtail/
+    command: -config.file=/etc/promtail/promtail.yml
+    networks:
+      - lokinet
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-service
+    ports:
+      - "3000:3000"
+    networks:
+      - lokinet
+
+networks:
+  lokinet:
+  postgres:
+    driver: bridge

@@ -1,0 +1,6 @@
+FROM openjdk:17-jdk
+
+WORKDIR /app
+COPY ./target/application-1.0.jar /app/
+
+ENTRYPOINT ["java", "-Dspring.profiles.active=dev", "-Xmx512m", "-jar", "/app/application-1.0.jar"]
